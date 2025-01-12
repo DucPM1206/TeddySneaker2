@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<th:block th:fragment="cart_modal">
+    <!-- Cart Modal -->
+    <div class="modal fade" id="cartModal" tabindex="-1" role="dialog" aria-labelledby="cartModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title" id="cartModalLabel">Giỏ hàng</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div id="cart-items" class="cart-items">
+                        <!-- Cart items will be dynamically inserted here -->
+                    </div>
+                    <div class="cart-item-template d-none">
+                        <div class="cart-item mb-3">
+                            <div class="row align-items-center">
+                                <div class="col-2">
+                                    <img src="" class="img-fluid product-image" alt="Product">
+                                </div>
+                                <div class="col-4">
+                                    <h6 class="product-name mb-1"></h6>
+                                    <p class="product-size mb-0">Size: <span></span></p>
+                                    <p class="product-price mb-0"></p>
+                                </div>
+                                <div class="col-3">
+                                    <div class="input-group">
+                                        <input type="text" class="form-control form-control-sm coupon-input" 
+                                            placeholder="Mã giảm giá">
+                                        <div class="input-group-append">
+                                            <button class="btn btn-outline-secondary btn-sm apply-coupon" type="button">
+                                                Áp dụng
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <small class="coupon-message text-muted"></small>
+                                </div>
+                                <div class="col-1">
+                                    <input style="padding: 0 0 0 12px; text-align: center;" type="number" class="form-control form-control-sm quantity-input mb-0" 
+                                        value="1" min="1">
+                                </div>
+                                <div class="col-1">
+                                    <button type="button" class="btn btn-sm btn-danger remove-item">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="cart-total mb-3">
+                        Tổng tiền: <span id="cart-total">0.00 VNĐ</span>
+                    </div>
+                    <hr/>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0">Thông tin đặt hàng</h5>
+                        <button class="btn btn-link" type="button" data-toggle="collapse" data-target="#orderForm" 
+                                aria-expanded="false" aria-controls="orderForm">
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                    </div>
+                    <div class="collapse" id="orderForm">
+                        <form id="order-form" class="needs-validation" novalidate>
+                            <div class="form-group">
+                                <label for="receiver-name">Họ tên người nhận *</label>
+                                <input type="text" class="form-control" id="receiver-name" th:data-user-fullname="${user_fullname}" th:value="${user_fullname}" required>
+                                <div class="invalid-feedback">
+                                    Vui lòng nhập họ tên người nhận
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="receiver-phone">Số điện thoại *</label>
+                                <input type="tel" class="form-control" id="receiver-phone" th:data-user-phone="${user_phone}" th:value="${user_phone}"
+                                       pattern="(09|03|07|08|05)[0-9]{8}" required>
+                                <div class="invalid-feedback">
+                                    Vui lòng nhập số điện thoại hợp lệ (VD: 0912345678)
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="receiver-address">Địa chỉ nhận hàng *</label>
+                                <textarea class="form-control" id="receiver-address" rows="2" th:data-user-address="${user_address}" th:text="${user_address}" required></textarea>
+                                <div class="invalid-feedback">
+                                    Vui lòng nhập địa chỉ nhận hàng
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="order-note">Ghi chú</label>
+                                <textarea class="form-control" id="order-note" rows="2"></textarea>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Tiếp tục mua sắm</button>
+                    <button type="button" class="btn btn-primary" onclick="cart.createOrder()">Đặt hàng</button>
+                    <button type="button" class="btn btn-danger" onclick="cart.clearCart()">Xoá giỏ hàng</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</th:block>
+</html>

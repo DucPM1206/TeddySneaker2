@@ -1,0 +1,147 @@
+<!--    Hủy hàng-->
+<div class="modal fade" id="cancelProduct" tabindex="-1">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Bạn có chắc chắn muốn hủy đơn hàng không?</h5>
+        <button
+          type="button"
+          class="close"
+          data-dismiss="modal"
+          aria-label="Close"
+        >
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="required-label">Lý do hủy đơn</label>
+          <input class="form-control" type="text" id="noteCancel" />
+          <div class="invalid-feedback"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" type="button" data-dismiss="modal">Huỷ bỏ</button>
+        <button
+          class="btn btn-primary red-btn btn-confirm-cancel-product"
+          type="button"
+        >
+          Đồng ý
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!--    Trả hàng-->
+<div class="modal fade" id="returnProduct" tabindex="-1">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Bạn có chắc chắn muốn trả hàng không?</h5>
+        <button
+          type="button"
+          class="close"
+          data-dismiss="modal"
+          aria-label="Close"
+        >
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="required-label">Lý do trả hàng</label>
+          <input class="form-control" type="text" id="noteReturn" />
+          <div class="invalid-feedback"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" type="button" data-dismiss="modal">Huỷ bỏ</button>
+        <button
+          class="btn btn-primary red-btn btn-confirm-return-product"
+          type="button"
+        >
+          Đồng ý
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script th:inline="javascript">
+  $(document).ready(function () {
+    $(".btn-confirm-cancel-product").click(function () {
+      let isValid = true;
+      let noteValue = $("#noteCancel").val();
+      let orderId = /*[[${order.id}]]*/ "";
+
+      if (noteValue == "") {
+        let noteInvalid = $("#noteCancel").next();
+        noteInvalid.css("display", "block");
+        noteInvalid.html("Vui lòng nhập lý do");
+        isValid = false;
+      }
+
+      if (isValid) {
+        let req = {
+          note: noteValue,
+          status: 4, // Cancel status
+        };
+
+        $.ajax({
+          url: "/api/cancel-order/" + orderId,
+          type: "POST",
+          data: JSON.stringify(req),
+          contentType: "application/json; charset=utf-8",
+          success: function (data) {
+            toastr.success("Hủy đơn hàng thành công");
+            $(".modal").modal("hide");
+            setTimeout(function () {
+              window.location.reload();
+            }, 1500);
+          },
+          error: function (data) {
+            toastr.warning(data.responseJSON.message);
+          },
+        });
+      }
+    });
+
+    $(".btn-confirm-return-product").click(function () {
+      let isValid = true;
+      let noteValue = $("#noteReturn").val();
+      let orderId = /*[[${order.id}]]*/ "";
+
+      if (noteValue == "") {
+        let noteInvalid = $("#noteReturn").next();
+        noteInvalid.css("display", "block");
+        noteInvalid.html("Vui lòng nhập lý do");
+        isValid = false;
+      }
+
+      if (isValid) {
+        let req = {
+          note: noteValue,
+          status: 3, // Return status
+        };
+
+        $.ajax({
+          url: "/api/return-order/" + orderId,
+          type: "POST",
+          data: JSON.stringify(req),
+          contentType: "application/json; charset=utf-8",
+          success: function (data) {
+            toastr.success("Yêu cầu trả hàng thành công");
+            $(".modal").modal("hide");
+            setTimeout(function () {
+              window.location.reload();
+            }, 1500);
+          },
+          error: function (data) {
+            toastr.warning(data.responseJSON.message);
+          },
+        });
+      }
+    });
+  });
+</script>

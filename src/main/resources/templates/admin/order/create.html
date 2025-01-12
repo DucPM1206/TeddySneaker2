@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{/layout/layout_admin :: main-fragment(
+                                                ~{:: title},
+                                                'header',
+                                                'sidebar',
+                                                ~{:: #css-resources},
+                                                ~{:: #js-resources},
+                                                ~{:: #main-content}
+                                               )}">
+<head>
+    <meta charset="UTF-8">
+    <title>Thêm mới đơn hàng</title>
+    <th:block id="css-resources">
+        <link rel="stylesheet" th:href="@{/adminlte/pagination/simplePagination.css}">
+        <link rel="stylesheet" th:href="@{/adminlte/css/order.css}">
+    </th:block>
+</head>
+<body>
+<section role="main" class="content-body" id="main-content">
+    <header class="page-header">
+        <!--        <h2>Editable Tables</h2>-->
+        <div class="right-wrapper text-right">
+            <ol class="breadcrumbs">
+                <li>
+                    <a href="index.html">
+                        <i class="bx bx-home-alt"></i>
+                    </a>
+                </li>
+                <li><span>Bán hàng tại quầy</span></li>
+            </ol>
+            <a class="sidebar-right-toggle" data-open="sidebar-right"><i
+                    class="fas fa-chevron-left"></i></a>
+        </div>
+    </header>
+    <form action="" id="formPost">
+        <section class="card">
+            <header class="card-header">
+                <div class="card-actions">
+                    <a href="#" class="card-action card-action-toggle" data-card-toggle></a>
+                    <a href="#" class="card-action card-action-dismiss" data-card-dismiss></a>
+                </div>
+                <h2 class="card-title">Tạo đơn hàng</h2>
+                <br>
+                <div class="row">
+                    <div class="col-sm-6">
+                        <div class="mb-3">
+                            <a href="/admin/orders" class="btn btn-primary"><i
+                                    class="fas fa-chevron-left"></i> Trở về</a>
+                            <button type="button" id="addToTable" class="btn btn-primary btn-create-order">Tạo đơn hàng <i
+                                    class="fas fa-plus"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            <div class="card-body tab-content" id="main-content">
+                <!-- Main content -->
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="form-group">
+                            <label>Thông tin khách hàng</label>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <input type="text" class="form-control" id="receiver-name" placeholder="Tên người nhận">
+                                </div>
+                                <div class="col-md-6">
+                                    <input type="text" class="form-control" id="receiver-phone" placeholder="Số điện thoại">
+                                </div>
+                            </div>
+                            <div class="row mt-3">
+                                <div class="col-md-12">
+                                    <input type="text" class="form-control" id="receiver-address" placeholder="Địa chỉ">
+                                </div>
+                            </div>
+                            <div class="row mt-3">
+                                <div class="col-md-12">
+                                    <textarea class="form-control" id="receiver-note" placeholder="Ghi chú"></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Chi tiết đơn hàng</label>
+                            <div id="order-details">
+                                <!-- Product rows will be added here -->
+                            </div>
+                            <button type="button" class="btn btn-info mt-3" onclick="addProductRow()">
+                                <i class="fas fa-plus"></i> Thêm sản phẩm
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="order-summary">
+                            <h4>Tổng quan đơn hàng</h4>
+                            <div class="summary-item">
+                                <span>Tổng tiền hàng:</span>
+                                <span id="subtotal">0đ</span>
+                            </div>
+                            <div class="summary-item">
+                                <span>Giảm giá:</span>
+                                <span id="total-discount">0đ</span>
+                            </div>
+                            <div class="summary-item">
+                                <span>Thành tiền:</span>
+                                <span id="total">0đ</span>
+                            </div>
+                            <button type="button" class="btn btn-primary btn-block mt-3" onclick="createOrder()">
+                                Tạo đơn hàng
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </form>
+
+</section>
+
+<th:block id="js-resources">
+    <script type="text/javascript" th:src="@{/adminlte/js/list.min.js}"></script>
+    <script type="text/javascript" th:src="@{/adminlte/js/modal_image.js}"></script>
+    <script th:inline="javascript">
+        var products = /*[[${products}]]*/;
+        var promotions = /*[[${promotions}]]*/;
+
+        function addProductRow() {
+            const row = `
+                <div class="product-row mb-3">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <select class="form-control product-select" onchange="handleProductChange(this)">
+                                <option value="">Chọn sản phẩm</option>
+                                ${products.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <select class="form-control size-select" onchange="updatePrice(this.closest('.product-row'))">
+                                <option value="">Size</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <input type="number" class="form-control quantity-input" value="1" min="1" 
+                                   onchange="updatePrice(this.closest('.product-row'))">
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-control promotion-select" onchange="updatePrice(this.closest('.product-row'))">
+                                <option value="">Chọn khuyến mãi</option>
+                                ${promotions.map(p => `<option value="${p.couponCode}">${p.name}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="col-md-1">
+                            <button type="button" class="btn btn-danger" onclick="removeProductRow(this)">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="row mt-2">
+                        <div class="col-md-4">
+                            <span class="product-price">0đ</span>
+                        </div>
+                        <div class="col-md-4">
+                            <span class="discount-amount">0đ</span>
+                        </div>
+                        <div class="col-md-4">
+                            <span class="subtotal">0đ</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('order-details').insertAdjacentHTML('beforeend', row);
+        }
+
+        function handleProductChange(select) {
+            const row = select.closest('.product-row');
+            const sizeSelect = row.querySelector('.size-select');
+            const product = products.find(p => p.id === select.value);
+            
+            // Clear existing options
+            sizeSelect.innerHTML = '<option value="">Size</option>';
+            
+            if (product && product.availableSizes) {
+                product.availableSizes.forEach((size, index) => {
+                    const quantity = product.quantitySizes[index];
+                    sizeSelect.add(new Option(`${size} (SL: ${quantity})`, size));
+                });
+            }
+
+            updatePrice(row);
+        }
+
+        function updatePrice(row) {
+            const productId = row.querySelector('.product-select').value;
+            const quantity = parseInt(row.querySelector('.quantity-input').value) || 1;
+            const promotionCode = row.querySelector('.promotion-select').value;
+            
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
+
+            let price = product.price;
+            let discount = 0;
+
+            if (promotionCode) {
+                const promotion = promotions.find(p => p.couponCode === promotionCode);
+                if (promotion) {
+                    if (promotion.discountType === 1) {
+                        discount = (price * promotion.discountValue / 100);
+                        if (discount > promotion.maximumDiscountValue) {
+                            discount = promotion.maximumDiscountValue;
+                        }
+                    } else {
+                        discount = promotion.discountValue;
+                    }
+                }
+            }
+            
+            const subtotal = (price - discount) * quantity;
+
+            row.querySelector('.product-price').textContent = formatMoney(price * quantity) + 'đ';
+            row.querySelector('.discount-amount').textContent = formatMoney(discount * quantity) + 'đ';
+            row.querySelector('.subtotal').textContent = formatMoney(subtotal) + 'đ';
+
+            updateOrderSummary();
+        }
+
+        function updateOrderSummary() {
+            let subtotal = 0;
+            let totalDiscount = 0;
+
+            document.querySelectorAll('.product-row').forEach(row => {
+                subtotal += parseInt(row.querySelector('.product-price').textContent.replace('đ', '').replace('.', '')) || 0;
+                totalDiscount += parseInt(row.querySelector('.discount-amount').textContent.replace('đ', '').replace('.', '')) || 0;
+            });
+
+            const total = subtotal - totalDiscount;
+            console.log(subtotal, totalDiscount, total);
+            
+
+            document.getElementById('subtotal').textContent = formatMoney(subtotal) + 'đ';
+            document.getElementById('total-discount').textContent = formatMoney(totalDiscount) + 'đ';
+            document.getElementById('total').textContent = formatMoney(total) + 'đ';
+        }
+
+        function removeProductRow(button) {
+            const row = button.closest('.product-row');
+            row.remove();
+            updateOrderSummary();
+        }
+
+        function createOrder() {
+            const orderDetails = [];
+            document.querySelectorAll('.product-row').forEach(row => {
+                const productId = row.querySelector('.product-select').value;
+                const size = row.querySelector('.size-select').value;
+                const quantity = row.querySelector('.quantity-input').value;
+                const promotionCode = row.querySelector('.promotion-select').value;
+                const productPriceNow = row.querySelector('.product-price').textContent.replace('đ', '').replace('.', '');
+                const discount = row.querySelector('.discount-amount').textContent.replace('đ', '').replace('.', '');
+
+                if (productId && size) {
+                    orderDetails.push({
+                        productId: productId,
+                        size: size,
+                        quantity: parseInt(quantity),
+                        couponCode: promotionCode || null,
+                        price: parseInt(productPriceNow) / parseInt(quantity), // Divide by quantity to get single item price
+                        discount: parseInt(discount) / parseInt(quantity), // Divide by quantity to get single item discount
+                        productCode: products.find(p => p.id === productId).productCode,
+                        productName: products.find(p => p.id === productId).name
+                    });
+                }
+            });
+
+            if (orderDetails.length === 0) {
+                alert('Vui lòng chọn ít nhất một sản phẩm');
+                return;
+            }
+
+            const order = {
+                receiver_name: document.getElementById('receiver-name').value,
+                receiver_phone: document.getElementById('receiver-phone').value,
+                receiver_address: document.getElementById('receiver-address').value,
+                note: document.getElementById('receiver-note').value,
+                items: orderDetails
+            };
+            
+            // Send order to server
+            fetch('/api/admin/orders', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(order)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                toastr.success("Tạo đơn hàng thành công");
+                setTimeout(function () {
+                    location.href = "/admin/orders/update/" + data;
+                }, 1000);
+            })
+            .catch(error => {
+                toastr.warning(error.message);
+            });
+        }
+
+        function formatMoney(money) {
+            return new Intl.NumberFormat('vn-VN', {
+                minimumFractionDigits: 0
+            }).format(money);
+        }
+
+        // Initialize with one product row
+        addProductRow();
+    </script>
+</th:block>
+</body>
+</html>
