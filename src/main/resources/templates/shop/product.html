@@ -25,16 +25,7 @@
             <div class="container position-relative">
                 <div class="row">
                     <div class="pl-lg-5 pb-5 pb-md-0 col-md-5 col-xl-4 col-lg-4 offset-1">
-<!--                        <h3 class="ml-lg-5 mb-2 ls-10">Electronic<br>Deals</h3>-->
-<!--                        <a href="#" class="ml-lg-5 btn btn-dark btn-black ls-10">Get Yours!</a>-->
                     </div>
-<!--                    <div class="pl-lg-5 col-md-4 offset-md-0 offset-1 pt-4">-->
-<!--                        <div class="coupon-sale-content">-->
-<!--                            <h4 class="m-b-2 coupon-sale-text bg-white ls-10 text-transform-none">Exclusive COUPON</h4>-->
-<!--                            <h5 class="mb-2 coupon-sale-text d-block ls-10 p-0"><i class="ls-0">UP TO</i><b-->
-<!--                                    class="text-dark">$100</b> OFF</h5>-->
-<!--                        </div>-->
-<!--                    </div>-->
                 </div>
             </div>
         </div>
@@ -67,12 +58,6 @@
                                         <a th:href="@{/{slug}/{id}(id=${product.id},slug=${product.slug})}"
                                            th:text="${product.name}"></a>
                                     </h2>
-                                    <div class="ratings-container">
-                                        <div class="product-ratings">
-                                            <span class="ratings" style="width:80%"></span>
-                                        </div>
-                                    </div>
-
                                     <div class="price-box">
                                         <th:block th:if="${product.promotionPrice}">
                                             <span class="product-price"
@@ -85,11 +70,6 @@
                                                   th:text="${#numbers.formatDecimal(product.price, 0, 'COMMA', 0, 'POINT') +' đ'}"></span>
                                         </th:block>
                                     </div><!-- End .price-box -->
-
-                                    <div class="product-desc">
-                                        <p th:utext="${product.description}"></p>
-                                    </div>
-
                                     <div class="product-filters-container">
                                         <div class="product-single-filter">
                                             <label>Size:</label>
@@ -402,12 +382,6 @@
                                     <h2 class="product-title">
                                         <a href="/${product.slug}/${product.id}">${product.name}</a>
                                     </h2>
-                                    <div class="ratings-container">
-                                        <div class="product-ratings">
-                                            <span class="ratings" style="width:80%"></span>
-                                        </div>
-                                    </div>
-
                                     <div class="price-box">`
                     if (product.promotionPrice > 0) {
                         html += `
@@ -418,10 +392,6 @@
                     }
                     html += `
                                     </div>
-                                    <div class="product-desc">
-                                        <p>${product.description}</p>
-                                    </div>
-
                                     <div class="product-filters-container">
                                         <div class="product-single-filter">
                                             <label>Size:</label>
