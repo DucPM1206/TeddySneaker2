@@ -60,7 +60,8 @@ public class CartOrderController {
         order.setModifiedAt(new Timestamp(System.currentTimeMillis()));
         order.setCreatedBy(user);
         order.setModifiedBy(user);
-
+        order.setDiscount(request.getDiscount());
+        order.setCouponCode(request.getCouponCode());
 
         long totalOrderPrice = 0;
         List<OrderDetail> orderDetails = new ArrayList<>();
@@ -90,16 +91,21 @@ public class CartOrderController {
             detail.setSize(Integer.parseInt(item.getSize()));
             detail.setQuantity(item.getQuantity());
             detail.setProductPrice(item.getPrice());
-            detail.setCouponCode(item.getCouponCode() != null ? item.getCouponCode() : "");
-            detail.setDiscount(item.getDiscount() != null ? item.getDiscount() : 0L);
-            
+            totalOrderPrice += item.getPrice() * item.getQuantity();
             orderDetails.add(detail);
-            totalOrderPrice += (item.getPrice() - (item.getDiscount() != null ? item.getDiscount() : 0)) * item.getQuantity();
         }
         
+        // Set total price before applying discount
         order.setTotalPrice(totalOrderPrice);
         order.setOrderDetails(orderDetails);
         
+        // Apply promotion if exists
+        if (request.getCouponCode() != null && !request.getCouponCode().isEmpty()) {
+            order.setCouponCode(request.getCouponCode());
+            order.setDiscount(request.getDiscount());
+            order.setTotalPrice(totalOrderPrice - request.getDiscount());
+        }
+
         Order savedOrder = orderService.createOrder(order, userId);
         
         Map<String, Object> response = new HashMap<>();

@@ -47,22 +47,22 @@ public class HomeController {
     private PromotionService promotionService;
 
     @GetMapping
-    public String homePage(Model model){
+    public String homePage(Model model) {
 
-        //Lấy 5 sản phẩm mới nhất
+        // Lấy 5 sản phẩm mới nhất
         List<ProductInfoDTO> newProducts = productService.getListNewProducts();
         model.addAttribute("newProducts", newProducts);
-        //Lấy 5 sản phẩm bán chạy nhất
+        // Lấy 5 sản phẩm bán chạy nhất
         List<ProductInfoDTO> bestSellerProducts = productService.getListBestSellProducts();
         model.addAttribute("bestSellerProducts", bestSellerProducts);
-        //Lấy 5 sản phẩm có lượt xem nhiều
+        // Lấy 5 sản phẩm có lượt xem nhiều
         List<ProductInfoDTO> viewProducts = productService.getListViewProducts();
         model.addAttribute("viewProducts", viewProducts);
-        //Lấy danh sách nhãn hiệu
+        // Lấy danh sách nhãn hiệu
         List<Brand> brands = brandService.getListBrand();
-        model.addAttribute("brands",brands);
+        model.addAttribute("brands", brands);
         System.out.println("brands");
-        //Lấy 5 bài viết mới nhất
+        // Lấy 5 bài viết mới nhất
         List<Post> posts = postService.getLatesPost();
         model.addAttribute("posts", posts);
         System.out.println("posts");
@@ -95,13 +95,18 @@ public class HomeController {
         // Lấy size có sẵn
         List<Integer> availableSizes = productService.getListAvailableSize(id);
         model.addAttribute("availableSizes", availableSizes);
+
+        // Lấy số lượng cho mỗi size
+        List<Integer> sizeQuantities = productService.getListSizeQuantities(id);
+        model.addAttribute("sizeQuantities", sizeQuantities);
+
         if (!availableSizes.isEmpty()) {
             model.addAttribute("canBuy", true);
         } else {
             model.addAttribute("canBuy", false);
         }
 
-        //Lấy danh sách size giầy
+        // Lấy danh sách size giầy
         model.addAttribute("sizeVn", Contant.SIZE_VN);
 
         return "shop/detail";
@@ -146,12 +151,14 @@ public class HomeController {
     }
 
     // @PostMapping("/api/orders")
-    // public ResponseEntity<Object> createOrder(@Valid @RequestBody CreateOrderRequest createOrderRequest) {
-    //     User user = ((CustomUserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal())
-    //             .getUser();
-    //     Order order = orderService.createOrder(createOrderRequest, user.getId());
+    // public ResponseEntity<Object> createOrder(@Valid @RequestBody
+    // CreateOrderRequest createOrderRequest) {
+    // User user = ((CustomUserDetails)
+    // SecurityContextHolder.getContext().getAuthentication().getPrincipal())
+    // .getUser();
+    // Order order = orderService.createOrder(createOrderRequest, user.getId());
 
-    //     return ResponseEntity.ok(order.getId());
+    // return ResponseEntity.ok(order.getId());
     // }
 
     @GetMapping("/products")
@@ -163,9 +170,9 @@ public class HomeController {
     @GetMapping("/san-pham")
     public String getProductShopPages(Model model) {
 
-        //Lấy danh sách nhãn hiệu
+        // Lấy danh sách nhãn hiệu
         List<Brand> brands = brandService.getListBrand();
-        model.addAttribute("brands",brands);
+        model.addAttribute("brands", brands);
         List<Long> brandIds = new ArrayList<>();
         for (Brand brand : brands) {
             brandIds.add(brand.getId());
@@ -174,18 +181,19 @@ public class HomeController {
 
         // Lấy danh sách danh mục
         List<Category> categories = categoryService.getListCategories();
-        model.addAttribute("categories",categories);
+        model.addAttribute("categories", categories);
         List<Long> categoryIds = new ArrayList<>();
         for (Category category : categories) {
-        categoryIds.add(category.getId());
+            categoryIds.add(category.getId());
         }
         model.addAttribute("categoryIds", categoryIds);
 
         // Danh sách size của sản phẩm
         model.addAttribute("sizeVn", Contant.SIZE_VN);
 
-        //Lấy danh sách sản phẩm
-        FilterProductRequest req = new FilterProductRequest(brandIds, categoryIds, new ArrayList<>(), (long) 0, Long.MAX_VALUE, 1);
+        // Lấy danh sách sản phẩm
+        FilterProductRequest req = new FilterProductRequest(brandIds, categoryIds, new ArrayList<>(), (long) 0,
+                Long.MAX_VALUE, 1);
         PageableDTO result = productService.filterProduct(req);
         model.addAttribute("totalPages", result.getTotalPages());
         model.addAttribute("currentPage", result.getCurrentPage());
@@ -251,6 +259,48 @@ public class HomeController {
         checkPromotion.setDiscountValue(promotion.getDiscountValue());
         checkPromotion.setMaximumDiscountValue(promotion.getMaximumDiscountValue());
         return ResponseEntity.ok(checkPromotion);
+    }
+
+    @GetMapping("/api/products/{id}/validate-size")
+    @ResponseBody
+    public ResponseEntity<Object> validateProductSize(@PathVariable String id, @RequestParam int size) {
+        try {
+            boolean isAvailable = productService.checkProductSizeAvailable(id, size);
+            if (isAvailable) {
+                return ResponseEntity.ok().build();
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Size " + size + " het hang");
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Có lỗi xảy ra khi kiểm tra size");
+        }
+    }
+
+    @GetMapping("/api/products/{id}/validate-quantity")
+    @ResponseBody
+    public ResponseEntity<Object> validateProductQuantity(
+            @PathVariable String id, 
+            @RequestParam int size, 
+            @RequestParam int quantity) {
+        try {
+            ProductSize productSize = productService.getProductSize(id, size);
+            if (productSize == null) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Size " + size + " khong ton tai");
+            }
+            
+            if (productSize.getQuantity() < quantity) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Chi con " + productSize.getQuantity() + " san pham size " + size);
+            }
+            
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Co loi xay ra khi kiem tra so luong");
+        }
     }
 
     @GetMapping("lien-he")

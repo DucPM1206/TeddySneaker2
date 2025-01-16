@@ -93,7 +93,7 @@
                                     <div class="product-filters-container">
                                         <div class="product-single-filter">
                                             <label>Size:</label>
-                                            <select class="form-select" id="product-size">
+                                            <select class="form-select" th:id="|product-size-${product.id}|">
                                                 <option th:each="size : ${sizeVn}" th:value="${size}" th:text="${size}"></option>
                                             </select>
                                         </div>
@@ -106,6 +106,7 @@
                                             th:data-product-name="${product.name}"
                                             th:data-product-price="${product.price}"
                                             th:data-product-thumbnail="${product.images}"
+                                            th:data-product-id="${product.id}"
                                             onclick="addToCartFromData(this)"
                                             >
                                             <i class="icon-bag"></i>Add to Cart
@@ -424,22 +425,29 @@
                                     <div class="product-filters-container">
                                         <div class="product-single-filter">
                                             <label>Size:</label>
-                                            <select class="form-control form-select" id="product-size">
-                                                <option th:each="size : ${sizeVn}" th:value="${size}" th:text="${size}"></option>
+                                            <select class="form-control form-select" id="product-size-${product.id}">
+                                                ${product.sizes.map(size => `
+                                                    <option value="${size}" 
+                                                        ${!product.availableSizes.includes(size) ? 'disabled' : ''}
+                                                        ${product.availableSizes.includes(size) ? '' : 'class="text-muted"'}>
+                                                        ${size} ${!product.availableSizes.includes(size) ? '(Hết hàng)' : ''}
+                                                    </option>
+                                                `).join('')}
                                             </select>
                                         </div>
                                     </div>
 
                                     <div class="product-action">
                                         <button class="btn-icon btn-add-cart" 
-                                            th:data-product-code="${product.productCode}"
-                                            th:data-product-name="${product.name}"
-                                            th:data-product-price="${product.price}"
-                                            th:data-product-thumbnail="${product.images}"
+                                            data-product-code="${product.productCode}"
+                                            data-product-name="${product.name}"
+                                            data-product-price="${product.price}"
+                                            data-product-thumbnail="${product.images}"
+                                            data-product-id="${product.id}"
                                             onclick="addToCartFromData(this)">
                                             <i class="icon-bag"></i>Add to Cart
                                         </button>
-                                    </div>
+                                    </div>{{ ... }}
                                </div>
                            </div>
                         </div>`
@@ -454,14 +462,36 @@
         }
 
         function addToCartFromData(button) {
+            var productId = button.getAttribute('data-product-id');
             var productCode = button.getAttribute('data-product-code');
             var productName = button.getAttribute('data-product-name');
             var productPrice = button.getAttribute('data-product-price');
             var productThumbnail = button.getAttribute('data-product-thumbnail');
-            var size = document.getElementById('product-size').value;
-            addToCart(productCode, productName, size, productPrice, productThumbnail);
-            // Show notification
-            toastr.success("Đã thêm sản phẩm mới vào giỏ hàng");
+            var sizeElement = document.getElementById('product-size-' + productId);
+            var size = sizeElement?.value;
+            if (!size) {
+                toastr.error("Vui lòng chọn size trước khi thêm vào giỏ hàng");
+                return;
+            }
+
+            // Validate size availability before adding to cart
+            fetch(`/api/products/${productId}/validate-size?size=${size}`)
+                .then(response => {
+                    if (response.ok) {
+                        // Size is available, add to cart
+                        addToCart(productCode, productName, size, productPrice, productThumbnail);
+                        toastr.success("Đã thêm sản phẩm mới vào giỏ hàng");
+                    } else {
+                        // Size is not available
+                        return response.text().then(message => {
+                            toastr.error(message || "Size này đã hết hàng");
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    toastr.error("Có lỗi xảy ra khi kiểm tra size");
+                });
         }
 
             $("#from-price").keyup(function () {

@@ -47,4 +47,7 @@ public class DetailProductInfoDTO {
     private List<Comment> comments;
 
     private String images; // First image from productImages list
+
+    private List<Integer> availableSizes;
+    private List<Integer> sizeQuantities;
 }

@@ -172,8 +172,6 @@
 															<th>Kích cỡ</th>
 															<th>Số lượng</th>
 															<th>Giá tiền</th>
-															<th>Khuyến mãi</th>
-															<th>Mức giảm</th>
 															<th>Thành tiền</th>
 															<th th:if="${order.status<= 1}">Thao tác</th>
 														</tr>
@@ -198,19 +196,6 @@
 																<span class="text-price" th:text="${detail.productPrice}"></span>đ
 															</td>
 															<td>
-																<span th:if="${detail.promotion != null}" th:text="${detail.promotion.name}"></span>
-															</td>
-															<td>
-																<div th:if="${detail.promotion != null}">
-																	<th:block th:if="${detail.promotion.discountType == 1}">
-																		<span th:text="${detail.promotion.discountValue}"></span>%
-																	</th:block>
-																	<th:block th:if="${detail.promotion.discountType == 2}">
-																		<span class="text-price" th:text="${detail.promotion.discountValue}"></span>đ
-																	</th:block>
-																</div>
-															</td>
-															<td>
 																<span class="text-price" th:text="${detail.subtotal}"></span>đ
 															</td>
 															<td>
@@ -224,8 +209,20 @@
 															</td>
 														</tr>
 														<tr>
-															<td colspan="6" class="text-right"><strong>Tổng tiền:</strong></td>
-															<td colspan="2">
+															<td colspan="3" class="text-right"><strong>Tổng tiền hàng:</strong></td>
+															<td colspan="3">
+																<span class="text-price" th:text="${order.totalPrice + order.discount}"></span>đ
+															</td>
+														</tr>
+														<tr th:if="${order.couponCode != null}">
+															<td colspan="3" class="text-right"><strong>Giảm giá:</strong></td>
+															<td colspan="3">
+																<span class="text-price" th:text="${order.discount}"></span>đ
+															</td>
+														</tr>
+														<tr>
+															<td colspan="3" class="text-right"><strong>Tổng thanh toán:</strong></td>
+															<td colspan="3">
 																<span class="text-price" th:text="${order.totalPrice}"></span>đ
 															</td>
 														</tr>
@@ -236,24 +233,50 @@
 									</div>
 									<div class="col-md-4">
 										<div class="edit-order-div">
-											<label>Trạng thái đơn hàng</label> <select name="status"
-												th:onchange="checkStatus(this)"
-												class="form-control thuy-search-select" id="status">
-												<option value="0" th:selected="${order.status == 0}">Chờ
-													xác nhận</option>
-												<option value="1" th:selected="${order.status == 1}">Chờ
-													lấy hàng</option>
-												<option value="2" th:selected="${order.status == 2}">Đang
-													giao hàng</option>
-												<option value="3" th:selected="${order.status == 3}">Đã
-													giao hàng</option>
-												<option value="4" th:selected="${order.status == 4}">Đơn
-													hàng bị trả lại</option>
-												<option value="5" id="cancel"
-													th:selected="${order.status == 5}">Đơn hàng bị hủy</option>
-												<option value="6" id="cancel"
-													th:selected="${order.status == 6}">Bán hàng tại quầy</option>
-											</select> <br> <label>Ghi chú</label>
+											<label>Trạng thái đơn hàng</label>
+											<select name="status" th:onchange="checkStatus(this)"
+												class="form-control thuy-search-select" id="status"
+												>
+												<option value="0" th:selected="${order.status == 0}">Chờ xác nhận</option>
+												<option value="1" th:selected="${order.status == 1}">Chờ lấy hàng</option>
+												<option value="2" th:selected="${order.status == 2}">Đang giao hàng</option>
+												<option value="3" th:selected="${order.status == 3}">Đã giao hàng</option>
+												<option value="4" th:selected="${order.status == 4}">Đơn hàng bị trả lại</option>
+												<option value="5" th:selected="${order.status == 5}">Đơn hàng bị hủy</option>
+												<option value="6" th:selected="${order.status == 6}">Bán hàng tại quầy</option>
+											</select>
+										</div>
+										<div class="edit-order-div mt-3">
+											<label>Mã giảm giá</label>
+											<div class="input-group">
+												<input type="text" class="form-control" id="coupon-code" 
+													th:value="${order.couponCode}" 
+													th:disabled="${order.status > 1}"
+													placeholder="Nhập mã giảm giá">
+												<div class="input-group-append">
+													<button class="btn btn-outline-secondary" 
+														type="button" 
+														th:disabled="${order.status > 1}"
+														onclick="applyCoupon()">Áp dụng</button>
+												</div>
+											</div>
+										</div>
+										<div class="edit-order-div mt-3">
+											<div class="summary-item">
+												<span>Tổng tiền hàng:</span>
+												<span id="subtotal" th:text="${#numbers.formatDecimal(order.totalPrice + order.discount, 0, 'COMMA', 0, 'POINT')} + 'đ'">0đ</span>
+											</div>
+											<div class="summary-item">
+												<span>Giảm giá:</span>
+												<span id="discount" th:text="${#numbers.formatDecimal(order.discount, 0, 'COMMA', 0, 'POINT')} + 'đ'">0đ</span>
+											</div>
+											<div class="summary-item">
+												<span>Tổng thanh toán:</span>
+												<span id="total" th:text="${#numbers.formatDecimal(order.totalPrice, 0, 'COMMA', 0, 'POINT')} + 'đ'">0đ</span>
+											</div>
+										</div>
+										<div class="edit-order-div">
+											<label>Ghi chú</label>
 											<textarea name="note" id="note" rows="5"
 												placeholder="Ghi chú" th:text="${order.note}"></textarea>
 											<i th:if="${order.modifiedAt}">Chỉnh sửa lần cuối lúc <span
@@ -305,8 +328,6 @@
 						<th>Sản phẩm</th>
 						<th>Kích cỡ</th>
 						<th>Giá tiền</th>
-						<th>Khuyến mãi</th>
-						<th>Mức giảm</th>
 						<th>Thành tiền</th>
 					</tr>
 				</thead>
@@ -319,20 +340,6 @@
 									class="badge badge-danger">Hết hàng</span>
 							</th:block></td>
 						<td><span class="text-price" th:text="${detail.productPrice}"></span>đ</td>
-						<td><span th:if="${detail.promotion != null}"
-							th:text="${detail.promotion.name}">
-						</span></td>
-						<td>
-							<div th:if="${detail.promotion != null}">
-								<th:block th:if="${detail.promotion.discountType} == 1">
-									<span th:text="${detail.promotion.discountValue}"></span>%
-                        </th:block>
-								<th:block th:if="${detail.promotion.discountType} == 2">
-									<span class="text-price"
-										th:text="${detail.promotion.discountValue}"></span>đ
-                        </th:block>
-							</div>
-						</td>
 						<td><span class="text-price" th:text="${detail.subtotal}"></span>đ</td>
 					</tr>
 				</tbody>
@@ -340,7 +347,13 @@
 			<div class="invoice-summary">
 				<p>
 					<strong>Tổng tiền cần thanh toán:</strong> <span
-						th:text="${order.totalPrice}"></span>đ
+						th:text="${order.totalPrice + order.discount}"></span>đ
+				</p>
+				<p th:if="${order.couponCode != null}">
+					<strong>Giảm giá:</strong> <span th:text="${order.discount}"></span>đ
+				</p>
+				<p>
+					<strong>Tổng thanh toán:</strong> <span th:text="${order.totalPrice}"></span>đ
 				</p>
 			</div>
 		</section>
@@ -447,40 +460,67 @@
 
 	<th:block id="js-resources">
 		<script th:inline="javascript">
-			var initialStatus = /*[[${order.status}]]*/ 0; // Giá trị mặc định là 0
-			if (initialStatus === 3) {
-				$("#cancel").prop("disabled", true);
-			}
+			var initialStatus = /*[[${order.status}]]*/ 0;
+			var currentDiscount = /*[[${order.discount}]]*/ 0;
+			var maximumDiscountValue = /*[[ ${order.promotion != null ? order.promotion.maximumDiscountValue : Infinity} ]]*/ 0;
 
 			function checkStatus(selectElement) {
-				if (selectElement.value === "5") {
-					$("#returnProduct").modal("show");
+				const newStatus = parseInt(selectElement.value);
+				if (newStatus < initialStatus && newStatus !== 3 && newStatus !== 4 && newStatus !== 5) {
+					alert('Không thể chuyển về trạng thái trước đó!');
+					selectElement.value = initialStatus;
+					return;
+				}
+				
+				if (newStatus === 3 || newStatus === 4 || newStatus === 5) {
+					$('#modal-return-product').modal('show');
 				}
 			}
 
-			$('.btn-confirm-return-product').click(function () {
-				let isValid = true;
-				let noteValue = $("#note-huy").val();
-				if (noteValue === "") {
-					let noteInvalid = $("#note-huy").next();
-					noteInvalid.css('display', 'block');
-					noteInvalid.html('Vui lòng nhập lý do');
-					isValid = false;
-				} else {
-					$("#note").next().css("display", "none");
+			function applyCoupon() {
+				const couponCode = document.getElementById('coupon-code').value;
+				if (!couponCode) {
+					alert('Vui lòng nhập mã giảm giá');
+					return;
 				}
 
-				if (isValid) {
-					$("#note").val(noteValue);
-					$("#returnProduct").modal("hide");
-				}
-			});
+				// Call API to check coupon
+				fetch(`/api/check-hidden-promotion?code=${couponCode}`)
+					.then(response => response.json())
+					.then(data => {
+						if (data.discountValue) {
+							currentDiscount = data.discountValue;
+							maximumDiscountValue = data.maximumDiscountValue;
+							updateOrderSummary();
+							alert('Áp dụng mã giảm giá thành công!');
+						} else {
+							alert('Mã giảm giá không hợp lệ hoặc đã hết hạn!');
+						}
+					})
+					.catch(error => {
+						console.error('Error:', error);
+						alert('Có lỗi xảy ra khi kiểm tra mã giảm giá');
+					});
+			}
 
-			$('.btn-huy').click(function () {
-				$("#status").val(initialStatus);
-				$("#returnProduct").modal("hide"); // Đóng modal
-			});
-			
+			function updateOrderSummary() {
+				let subtotal = /*[[${order.totalPrice}]]*/ 0;
+				let discountValue = 0;
+				if (document.getElementById('coupon-code').value) {
+					discountValue = subtotal * currentDiscount / 100;
+					discountValue = discountValue > maximumDiscountValue ? maximumDiscountValue : discountValue;
+				}
+				const total = subtotal - discountValue;
+
+				document.getElementById('subtotal').textContent = formatMoney(subtotal) + 'đ';
+				document.getElementById('discount').textContent = formatMoney(discountValue) + 'đ';
+				document.getElementById('total').textContent = formatMoney(total) + 'đ';
+			}
+
+			function formatMoney(amount) {
+				return new Intl.NumberFormat('vi-VN').format(amount);
+			}
+
 			let orderDetails = /*[[${orderDetailsJson}]]*/ [];
 			var status = /*[[${order.status}]]*/ 0;
 			if (status <= 1) {

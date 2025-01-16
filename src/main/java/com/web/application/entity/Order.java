@@ -143,6 +143,16 @@ public class Order {
     @Column(name = "total_price", nullable = false)
     private long totalPrice;
 
+    @Column(name = "coupon_code", insertable = false, updatable = false)
+    private String couponCode;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "coupon_code", referencedColumnName = "coupon_code")
+    private Promotion promotion;
+
+    @Column(name = "discount")
+    private long discount = 0;
+
     @Column(name = "status", nullable = false)
     private int status;
 
@@ -166,6 +176,22 @@ public class Order {
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderDetail> orderDetails = new ArrayList<>();
+
+    @PrePersist
+    @PreUpdate
+    private void calculateTotalPrice() {
+        long subtotal = 0;
+        for (OrderDetail detail : orderDetails) {
+            subtotal += detail.getProductPrice() * detail.getQuantity();
+        }
+        
+        if (promotion != null) {
+            this.totalPrice = subtotal - this.discount;
+        } else {
+            this.discount = 0;
+            this.totalPrice = subtotal;
+        }
+    }
 
     // Helper methods for managing bidirectional relationship
     public void addOrderDetail(OrderDetail detail) {

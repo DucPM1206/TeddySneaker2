@@ -97,11 +97,20 @@
                                 <span id="subtotal">0đ</span>
                             </div>
                             <div class="summary-item">
-                                <span>Giảm giá:</span>
-                                <span id="total-discount">0đ</span>
+                                <span>Mã giảm giá:</span>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="coupon-code" placeholder="Nhập mã giảm giá">
+                                    <div class="input-group-append">
+                                        <button class="btn btn-outline-secondary" type="button" onclick="applyCoupon()">Áp dụng</button>
+                                    </div>
+                                </div>
                             </div>
                             <div class="summary-item">
-                                <span>Thành tiền:</span>
+                                <span>Giảm giá:</span>
+                                <span id="discount">0đ</span>
+                            </div>
+                            <div class="summary-item">
+                                <span>Tổng thanh toán:</span>
                                 <span id="total">0đ</span>
                             </div>
                             <button type="button" class="btn btn-primary btn-block mt-3" onclick="createOrder()">
@@ -122,6 +131,8 @@
     <script th:inline="javascript">
         var products = /*[[${products}]]*/;
         var promotions = /*[[${promotions}]]*/;
+        var currentDiscount = 0;
+        var maximumDiscountValue = Infinity;
 
         function addProductRow() {
             const row = `
@@ -142,12 +153,7 @@
                             <input type="number" class="form-control quantity-input" value="1" min="1" 
                                    onchange="updatePrice(this.closest('.product-row'))">
                         </div>
-                        <div class="col-md-3">
-                            <select class="form-control promotion-select" onchange="updatePrice(this.closest('.product-row'))">
-                                <option value="">Chọn khuyến mãi</option>
-                                ${promotions.map(p => `<option value="${p.couponCode}">${p.name}</option>`).join('')}
-                            </select>
-                        </div>
+                        
                         <div class="col-md-1">
                             <button type="button" class="btn btn-danger" onclick="removeProductRow(this)">
                                 <i class="fas fa-trash"></i>
@@ -191,32 +197,19 @@
         function updatePrice(row) {
             const productId = row.querySelector('.product-select').value;
             const quantity = parseInt(row.querySelector('.quantity-input').value) || 1;
-            const promotionCode = row.querySelector('.promotion-select').value;
             
             const product = products.find(p => p.id === productId);
             if (!product) return;
 
             let price = product.price;
             let discount = 0;
-
-            if (promotionCode) {
-                const promotion = promotions.find(p => p.couponCode === promotionCode);
-                if (promotion) {
-                    if (promotion.discountType === 1) {
-                        discount = (price * promotion.discountValue / 100);
-                        if (discount > promotion.maximumDiscountValue) {
-                            discount = promotion.maximumDiscountValue;
-                        }
-                    } else {
-                        discount = promotion.discountValue;
-                    }
-                }
-            }
             
             const subtotal = (price - discount) * quantity;
 
+            console.log(price, discount, quantity, subtotal);
+            
+
             row.querySelector('.product-price').textContent = formatMoney(price * quantity) + 'đ';
-            row.querySelector('.discount-amount').textContent = formatMoney(discount * quantity) + 'đ';
             row.querySelector('.subtotal').textContent = formatMoney(subtotal) + 'đ';
 
             updateOrderSummary();
@@ -227,16 +220,23 @@
             let totalDiscount = 0;
 
             document.querySelectorAll('.product-row').forEach(row => {
-                subtotal += parseInt(row.querySelector('.product-price').textContent.replace('đ', '').replace('.', '')) || 0;
-                totalDiscount += parseInt(row.querySelector('.discount-amount').textContent.replace('đ', '').replace('.', '')) || 0;
+                subtotal += parseInt(row.querySelector('.product-price').textContent.replace('đ', '').replaceAll('.', '')) || 0;
             });
-
+            let discountValue = 0;
+            if (document.getElementById('coupon-code').value) {
+                discountValue = subtotal * currentDiscount / 100;
+                discountValue = discountValue > maximumDiscountValue ? maximumDiscountValue : discountValue;
+            }
+            totalDiscount = discountValue;
             const total = subtotal - totalDiscount;
-            console.log(subtotal, totalDiscount, total);
-            
 
+            console.log("subtotal: ", subtotal);
+            console.log("totalDiscount: ", totalDiscount);
+            console.log("total: ", total);
+            
+            
             document.getElementById('subtotal').textContent = formatMoney(subtotal) + 'đ';
-            document.getElementById('total-discount').textContent = formatMoney(totalDiscount) + 'đ';
+            document.getElementById('discount').textContent = formatMoney(totalDiscount) + 'đ';
             document.getElementById('total').textContent = formatMoney(total) + 'đ';
         }
 
@@ -246,65 +246,99 @@
             updateOrderSummary();
         }
 
+        function applyCoupon() {
+            const couponCode = document.getElementById('coupon-code').value;
+            if (!couponCode) {
+                alert('Vui lòng nhập mã giảm giá');
+                return;
+            }
+
+            // Call API to check coupon
+            fetch(`/api/check-hidden-promotion?code=${couponCode}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data?.discountValue) {
+                        currentDiscount = data.discountValue;
+                        maximumDiscountValue = data.maximumDiscountValue;
+                        updateOrderSummary();
+                        alert('Áp dụng mã giảm giá thành công!');
+                    } else {
+                        alert('Mã giảm giá không hợp lệ hoặc đã hết hạn!');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Có lỗi xảy ra khi kiểm tra mã giảm giá');
+                });
+        }
+
         function createOrder() {
-            const orderDetails = [];
+            const receiverName = document.getElementById('receiver-name').value;
+            const receiverPhone = document.getElementById('receiver-phone').value;
+            const receiverAddress = document.getElementById('receiver-address').value;
+            const note = document.getElementById('receiver-note').value;
+            const couponCode = document.getElementById('coupon-code').value;
+            let discountValue = parseInt(document.getElementById('discount').textContent.replace('đ', '').replaceAll('.', ''));
+
+            if (!receiverName || !receiverPhone || !receiverAddress) {
+                alert('Vui lòng điền đầy đủ thông tin người nhận');
+                return;
+            }
+
+            const items = [];
             document.querySelectorAll('.product-row').forEach(row => {
                 const productId = row.querySelector('.product-select').value;
                 const size = row.querySelector('.size-select').value;
-                const quantity = row.querySelector('.quantity-input').value;
-                const promotionCode = row.querySelector('.promotion-select').value;
-                const productPriceNow = row.querySelector('.product-price').textContent.replace('đ', '').replace('.', '');
-                const discount = row.querySelector('.discount-amount').textContent.replace('đ', '').replace('.', '');
+                const quantity = parseInt(row.querySelector('.quantity-input').value);
+                const productPriceNow = row.querySelector('.product-price').textContent.replace('đ', '').replaceAll('.', '');
 
                 if (productId && size) {
-                    orderDetails.push({
+                    items.push({
                         productId: productId,
                         size: size,
                         quantity: parseInt(quantity),
-                        couponCode: promotionCode || null,
                         price: parseInt(productPriceNow) / parseInt(quantity), // Divide by quantity to get single item price
-                        discount: parseInt(discount) / parseInt(quantity), // Divide by quantity to get single item discount
                         productCode: products.find(p => p.id === productId).productCode,
                         productName: products.find(p => p.id === productId).name
                     });
                 }
             });
 
-            if (orderDetails.length === 0) {
-                alert('Vui lòng chọn ít nhất một sản phẩm');
+            if (items.length === 0) {
+                alert('Vui lòng thêm ít nhất một sản phẩm');
                 return;
             }
 
-            const order = {
-                receiver_name: document.getElementById('receiver-name').value,
-                receiver_phone: document.getElementById('receiver-phone').value,
-                receiver_address: document.getElementById('receiver-address').value,
-                note: document.getElementById('receiver-note').value,
-                items: orderDetails
+            const orderData = {
+                receiver_name: receiverName,
+                receiver_phone: receiverPhone,
+                receiver_address: receiverAddress,
+                note: note,
+                coupon_code: couponCode,
+                discount: discountValue,
+                items: items
             };
-            
-            // Send order to server
+
+            // Send order data to server
             fetch('/api/admin/orders', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(order)
+                body: JSON.stringify(orderData)
             })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                return response.json();
-            })
+            .then(response => response.json())
             .then(data => {
-                toastr.success("Tạo đơn hàng thành công");
-                setTimeout(function () {
-                    location.href = "/admin/orders/update/" + data;
-                }, 1000);
+                if (Number.isSafeInteger(data)) {
+                    alert('Tạo đơn hàng thành công!');
+                    window.location.href = '/admin/orders';
+                } else {
+                    alert(data.message || 'Có lỗi xảy ra khi tạo đơn hàng');
+                }
             })
             .catch(error => {
-                toastr.warning(error.message);
+                console.error('Error:', error);
+                alert('Có lỗi xảy ra khi tạo đơn hàng');
             });
         }
 

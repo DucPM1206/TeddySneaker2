@@ -39,6 +39,12 @@ public class CreateCartOrderRequest {
     @JsonProperty("note")
     private String note;
 
+    @JsonProperty("coupon_code")
+    private String couponCode;
+
+    @JsonProperty("discount")
+    private Long discount = 0L;
+
     @Getter
     @Setter
     @NoArgsConstructor
@@ -63,10 +69,5 @@ public class CreateCartOrderRequest {
         @JsonProperty("price")
         private long price;
 
-        @JsonProperty("couponCode")
-        private String couponCode;
-
-        @JsonProperty("discount")
-        private Long discount = 0L;
     }
 }

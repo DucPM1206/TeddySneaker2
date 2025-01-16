@@ -279,6 +279,16 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    public List<Integer> getListSizeQuantities(String id) {
+        List<ProductSize> productSizes = productSizeRepository.findByProductId(id);
+        List<Integer> quantities = new ArrayList<>();
+        for (ProductSize size : productSizes) {
+            quantities.add(size.getQuantity());
+        }
+        return quantities;
+    }
+
+    @Override
     public void createSizeCount(CreateSizeCountRequest createSizeCountRequest) {
 
         //Kiểm trả size
@@ -312,6 +322,13 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public List<ProductSize> getListSizeOfProduct(String id) {
         return productSizeRepository.findByProductId(id);
+    }
+
+    @Override
+    public ProductSize getProductSize(String productCode, int size) {
+        String id = productRepository.findByProductCode(productCode).getId();
+        return productSizeRepository.findByProductIdAndSize(id, size)
+                .orElse(null);
     }
 
     @Override

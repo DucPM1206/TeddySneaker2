@@ -36,14 +36,14 @@ public interface ProductSizeRepository extends JpaRepository<ProductSize, Produc
     // Trừ 1 sản phẩm theo size
     @Transactional
     @Modifying
-    @Query(nativeQuery = true, value = "Update product_size set quantity = quantity - 1 where product_id = ?1 and size = ?2")
-    public void minusOneProductBySize(String id, int size);
+    @Query(nativeQuery = true, value = "Update product_size set quantity = quantity - ?3 where product_id = ?1 and size = ?2")
+    public void minusOneProductBySize(String id, int size, int quantity);
 
     // Cộng 1 sản phẩm theo size
     @Transactional
     @Modifying
-    @Query(nativeQuery = true, value = "Update product_size set quantity = quantity + 1 where product_id = ?1 and size = ?2")
-    public void plusOneProductBySize(String id, int size);
+    @Query(nativeQuery = true, value = "Update product_size set quantity = quantity + ?3 where product_id = ?1 and size = ?2")
+    public void plusOneProductBySize(String id, int size, int quantity);
 
     @Transactional
     @Modifying

@@ -34,6 +34,12 @@ public class CreateOrderRequest {
 
     private String note;
 
+    @JsonProperty("coupon_code")
+    private String couponCode;
+
+    @JsonProperty("discount")
+    private Long discount = 0L;
+
     @NotEmpty(message = "Order must contain at least one product")
     private List<CartItem> items = new ArrayList<>();  
 
@@ -60,11 +66,5 @@ public class CreateOrderRequest {
         
         @JsonProperty("price")
         private long price;
-
-        @JsonProperty("couponCode")
-        private String couponCode;
-
-        @JsonProperty("discount")
-        private Long discount = 0L;
     }
 }

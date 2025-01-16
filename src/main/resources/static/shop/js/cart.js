@@ -10,13 +10,16 @@ $(document).ready(function () {
   class ShoppingCart {
     constructor() {
       this.cart = JSON.parse(localStorage.getItem("cart")) || [];
+      this.couponCode = localStorage.getItem("cartCouponCode") || "";
+      this.discount = parseInt(localStorage.getItem("cartDiscount")) || 0;
+      this.maximumDiscountValue = Infinity;
       this.updateCartDisplay();
     }
 
     // Add item to cart
     addItem(productCode, productName, size, price, imageUrl) {
       const existingItem = this.cart.find(
-        (item) => item.productCode === productCode && item.size === size
+        (item) => item.productCode === productCode && item.size == size
       );
 
       if (existingItem) {
@@ -29,8 +32,6 @@ $(document).ready(function () {
           price,
           imageUrl,
           quantity: 1,
-          couponCode: "",
-          discount: 0,
         });
       }
 
@@ -41,33 +42,72 @@ $(document).ready(function () {
     // Remove item from cart
     removeItem(productCode, size) {
       this.cart = this.cart.filter(
-        (item) => !(item.productCode === productCode && item.size === size)
+        (item) => !(item.productCode === productCode && item.size == size)
       );
       this.updateCartDisplay();
     }
 
     // Update item quantity
-    updateQuantity(productCode, size, quantity) {
+    async updateQuantity(productCode, size, quantity) {
+      console.log(this.cart, productCode, size, quantity);
       const item = this.cart.find(
-        (item) => item.productCode === productCode && item.size === size
+        (item) => item.productCode === productCode && item.size == size
       );
+      
+      
       if (item && quantity > 0) {
-        item.quantity = quantity;
-        this.updateCartDisplay();
+        try {
+          // Get product ID from the first part of the product code (before the first dash)
+          const productId = productCode.split('-')[0];
+          
+          // Validate if the requested quantity is available
+          const response = await fetch(`/api/products/${productId}/validate-quantity?size=${size}&quantity=${quantity}`);
+          
+          if (response.ok) {
+            // Update quantity if available
+            item.quantity = quantity;
+            this.saveCart();
+            this.updateCartDisplay();
+          } else {
+            // Show error message if not available
+            const message = await response.text();
+            toastr.error(message || "Số lượng yêu cầu không có sẵn");
+            // Reset quantity input to previous value
+            this.updateCartDisplay();
+          }
+        } catch (error) {
+          console.error('Error:', error);
+          toastr.error("Có lỗi xảy ra khi kiểm tra số lượng");
+          this.updateCartDisplay();
+        }
       }
     }
 
-    // Apply coupon to specific item
-    async applyCoupon(productCode, size, couponCode) {
-      try {
-        const item = this.cart.find(
-          (item) => item.productCode === productCode && item.size === size
-        );
+    // Save cart to localStorage
+    saveCart() {
+      localStorage.setItem("cart", JSON.stringify(this.cart));
+      localStorage.setItem("cartCouponCode", this.couponCode);
+      localStorage.setItem("cartDiscount", this.discount.toString());
+      localStorage.setItem("cartMaximumDiscountValue", this.maximumDiscountValue.toString());
+    }
 
+    // Clear cart
+    clearCart() {
+      this.cart = [];
+      this.couponCode = "";
+      this.discount = 0;
+      this.saveCart();
+      this.updateCartDisplay();
+    }
+
+    // Apply coupon to entire cart
+    async applyCoupon(couponCode) {
+      try {
         // If coupon exists and button clicked, remove it
-        if (item && item.couponCode) {
-          item.couponCode = "";
-          item.discount = 0;
+        if (this.couponCode) {
+          this.couponCode = "";
+          this.discount = 0;
+          this.maximumDiscountValue = Infinity;
           this.saveCart();
           this.updateCartDisplay();
           return {
@@ -90,26 +130,24 @@ $(document).ready(function () {
 
         const result = await response.json();
 
-        if (response.ok && item) {
-          item.couponCode = couponCode;
-          let discount = item.price * (result.discountValue / 100);
-          if(discount > result.maximumDiscountValue) {
-            discount = result.maximumDiscountValue;
-          }
-          item.discount = discount;
+        if (response.ok) {
+          this.couponCode = couponCode;
+          this.discount = result.discountValue;
+          this.maximumDiscountValue = result.maximumDiscountValue;
           this.saveCart();
           this.updateCartDisplay();
           return {
             success: true,
-            message: "Mã giảm giá đã được áp dụng",
+            message: "Áp dụng mã giảm giá thành công",
             action: "apply",
           };
+        } else {
+          return {
+            success: false,
+            message: result.message || "Mã giảm giá không hợp lệ",
+            action: "error",
+          };
         }
-        return {
-          success: false,
-          message: result.message || "Mã giảm giá không hợp lệ",
-          action: "error",
-        };
       } catch (error) {
         console.error("Error applying coupon:", error);
         return {
@@ -120,128 +158,157 @@ $(document).ready(function () {
       }
     }
 
-    // Calculate total price
-    getTotalPrice() {
-      return this.cart.reduce(
-        (total, item) =>
-          total + (item.price - (item.discount || 0)) * item.quantity,
-        0
-      );
-    }
-
-    // Get total items count
-    getTotalItems() {
-      return this.cart.reduce((total, item) => total + item.quantity, 0);
-    }
-
-    // Save cart to localStorage
-    saveCart() {
-      localStorage.setItem("cart", JSON.stringify(this.cart));
+    // Calculate cart totals
+    calculateTotals() {
+      let subtotal = 0;
+      this.cart.forEach((item) => {
+        subtotal += item.price * item.quantity;
+      });
+      let discountValue = 0;
+      if (this.couponCode) {
+        discountValue = subtotal * this.discount / 100;
+        discountValue = discountValue > 10000 ? 10000 : discountValue;
+      }
+      const total = subtotal - discountValue;
+      return {
+        subtotal,
+        discount: discountValue,
+        total: total > 0 ? total : 0,
+      };
     }
 
     // Update cart display
     updateCartDisplay() {
-      const cartCount = document.getElementById("cart-count");
-      const cartItemsContainer = document.getElementById("cart-items");
-      const cartTotalElement = document.getElementById("cart-total");
-      const template = document.querySelector(".cart-item-template .cart-item");
+      const cartContainer = document.querySelector(".cart-items");
+      if (!cartContainer) return;
 
-      if (!cartItemsContainer || !template) return;
+      const couponInput = document.getElementById("coupon-code");
+      const couponButton = document.getElementById("apply-coupon");
+      const couponMessage = document.getElementById("coupon-message");
 
-      // Clear existing items
-      cartItemsContainer.innerHTML = "";
+      cartContainer.innerHTML = "";
+      const totals = this.calculateTotals();
 
-      let total = 0;
-
-      // Add each item
+      // Update items
       this.cart.forEach((item) => {
-        // Clone template
-        const clone = template.cloneNode(true);
-
-        // Set item details
-        const img = clone.querySelector(".product-image");
-        img.src = item.imageUrl;
-        img.alt = item.productName;
-
-        clone.querySelector(".product-name").textContent = item.productName;
-        clone.querySelector(".product-size span").textContent = item.size;
-        clone.querySelector(".product-price").textContent = this.formatPrice(
-          item.price - (item.discount || 0)
-        );
-
-        // Set quantity
-        const quantityInput = clone.querySelector(".quantity-input");
-        quantityInput.value = item.quantity;
-        quantityInput.dataset.productCode = item.productCode;
-        quantityInput.dataset.size = item.size;
-        quantityInput.addEventListener("change", (e) => {
-          const newQuantity = parseInt(e.target.value);
-          if (newQuantity > 0) {
-            this.updateQuantity(item.productCode, item.size, newQuantity);
-          }
-        });
-
-        // Set coupon code if exists
-        const couponInput = clone.querySelector(".coupon-input");
-        const applyButton = clone.querySelector(".apply-coupon");
-        couponInput.value = item.couponCode || "";
-        couponInput.dataset.productCode = item.productCode;
-        couponInput.dataset.size = item.size;
-
-        // Update button text based on coupon status
-        applyButton.textContent = item.couponCode ? "Gỡ" : "Áp dụng";
-
-        // Add coupon apply handler
-        const couponMessage = clone.querySelector(".coupon-message");
-
-        applyButton.addEventListener("click", async () => {
-          const result = await this.applyCoupon(
-            item.productCode,
-            item.size,
-            couponInput.value
-          );
-          couponMessage.textContent = result.message;
-          toastr[result.success ? "success" : "warning"](result.message);
-          couponMessage.className = `coupon-message text-${
-            result.success ? "success" : "danger"
-          }`;
-          applyButton.textContent =
-            result.action === "apply" ? "Gỡ" : "Áp dụng";
-
-          if (result.action === "remove") {
-            couponInput.value = "";
-          }
-        });
-
-        // Add remove handler
-        const removeButton = clone.querySelector(".remove-item");
-        removeButton.dataset.productCode = item.productCode;
-        removeButton.dataset.size = item.size;
-        removeButton.addEventListener("click", () => {
-          this.removeItem(item.productCode, item.size);
-        });
-
-        cartItemsContainer.appendChild(clone);
-        total += (item.price - (item.discount || 0)) * item.quantity;
+        const itemHtml = `
+          <div class="cart-item row align-items-center mb-3" data-product-code="${item.productCode}" data-size="${item.size}">
+            <div class="col-2">
+              <img src="${item.imageUrl}" alt="${item.productName}" class="img-fluid">
+            </div>
+            <div class="col-4">
+              <h6 class="mb-1">${item.productName}</h6>
+              <p class="mb-0">Size: ${item.size}</p>
+              <p class="mb-0">Giá: ${this.formatPrice(item.price)}đ</p>
+            </div>
+            <div class="col-4 d-flex align-items-center">
+              <div class="d-flex align-items-center">
+                <button class="btn btn-sm btn-outline-secondary decrease-quantity">-</button>
+                <input type="number" class="form-control form-control-sm mx-2 quantity-input mb-0" 
+                  value="${item.quantity}" min="1" style="width: 60px; text-align: center;">
+                <button class="btn btn-sm btn-outline-secondary increase-quantity">+</button>
+              </div>
+            </div>
+            <div class="col-2">
+              <button class="btn btn-sm btn-danger remove-item">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </div>
+        `;
+        cartContainer.insertAdjacentHTML("beforeend", itemHtml);
       });
 
+      // Update totals
+      document.getElementById("cart-subtotal").textContent = this.formatPrice(totals.subtotal);
+      document.getElementById("cart-discount").textContent = this.formatPrice(totals.discount);
+      document.getElementById("cart-total").textContent = this.formatPrice(totals.total);
+
+      // Update coupon display
+      if (couponInput && couponButton) {
+        couponInput.value = this.couponCode;
+        couponButton.textContent = this.couponCode ? "Gỡ mã giảm giá" : "Áp dụng";
+      }
+
+      // Update cart count
+      const cartCount = document.querySelector(".cart-count");
       if (cartCount) {
-        cartCount.textContent = this.getTotalItems();
+        const totalItems = this.cart.reduce((sum, item) => sum + item.quantity, 0);
+        cartCount.textContent = totalItems;
       }
 
-      if (cartTotalElement) {
-        cartTotalElement.textContent = this.formatPrice(total);
-      }
-
-      // Save cart state after any update
       this.saveCart();
+
+      // Add event listeners for cart item buttons
+      document.querySelectorAll('.cart-item').forEach(item => {
+        const productCode = item.dataset.productCode;
+        const size = item.dataset.size;
+        const quantityInput = item.querySelector('.quantity-input');
+
+        item.querySelector('.decrease-quantity')?.addEventListener('click', () => {
+          const newQuantity = parseInt(quantityInput.value) - 1;
+          if (newQuantity >= 1) {
+            this.updateQuantity(productCode, size, newQuantity);
+          }
+        });
+
+        item.querySelector('.increase-quantity')?.addEventListener('click', () => {          
+          const newQuantity = parseInt(quantityInput.value) + 1;
+          this.updateQuantity(productCode, size, newQuantity);
+        });
+
+        item.querySelector('.remove-item')?.addEventListener('click', () => {
+          this.removeItem(productCode, size);
+        });
+
+        quantityInput?.addEventListener('change', (e) => {
+          const newQuantity = parseInt(e.target.value);
+          if (newQuantity >= 1) {
+            this.updateQuantity(productCode, size, newQuantity);
+          } else {
+            e.target.value = 1;
+            this.updateQuantity(productCode, size, 1);
+          }
+        });
+      });
+
+      // Add event listener for coupon button
+      couponButton?.addEventListener('click', async () => {
+        const code = couponInput.value.trim();
+        if (!code) {
+          couponMessage.textContent = 'Vui lòng nhập mã giảm giá';
+          couponMessage.style.color = '#dc3545';
+          return;
+        }
+
+        const result = await this.applyCoupon(code);
+        couponMessage.textContent = result.message;
+        couponMessage.style.color = result.success ? '#28a745' : '#dc3545';
+        
+        if (result.success) {
+          if (result.action === 'remove') {
+            couponInput.value = '';
+            couponButton.textContent = 'Áp dụng';
+          } else {
+            couponButton.textContent = 'Gỡ mã giảm giá';
+          }
+        }
+      });
     }
 
-    // Clear cart
-    clearCart() {
-      this.cart = [];
-      this.saveCart();
-      this.updateCartDisplay();
+    // Get cart data for order creation
+    getOrderData() {
+      const totals = this.calculateTotals();
+      return {
+        items: this.cart.map(item => ({
+          productCode: item.productCode,
+          size: item.size,
+          quantity: item.quantity,
+          price: item.price
+        })),
+        coupon_code: this.couponCode,
+        discount: totals.discount
+      };
     }
 
     // Create order
@@ -284,21 +351,12 @@ $(document).ready(function () {
         return;
       }
 
-      const orderData = {
-        items: this.cart.map((item) => ({
-          productCode: item.productCode,
-          productName: item.productName,
-          size: item.size,
-          quantity: item.quantity,
-          price: item.price,
-          discount: item.discount,
-          couponCode: item.couponCode,
-        })),
-        receiverName: document.getElementById("receiver-name").value,
-        receiverPhone: document.getElementById("receiver-phone").value,
-        receiverAddress: document.getElementById("receiver-address").value,
-        note: document.getElementById("order-note")?.value || "",
-      };
+      const orderData = this.getOrderData();
+
+      orderData.receiverName = document.getElementById("receiver-name").value;
+      orderData.receiverPhone = document.getElementById("receiver-phone").value;
+      orderData.receiverAddress = document.getElementById("receiver-address").value;
+      orderData.note = document.getElementById("order-note")?.value || "";
 
       fetch("/api/orders", {
         method: "POST",

@@ -56,11 +56,17 @@ public interface ProductService {
     //Lấy size có sẵn
     List<Integer> getListAvailableSize(String id);
 
+    //Lấy số lượng của từng size
+    List<Integer> getListSizeQuantities(String id);
+
     //Nhập số lượng theo size
     void createSizeCount(CreateSizeCountRequest createSizeCountRequest);
 
     //Lấy size của sản phẩm
     List<ProductSize> getListSizeOfProduct(String id);
+
+    //Lấy thông tin size cụ thể của sản phẩm
+    ProductSize getProductSize(String id, int size);
 
     List<ShortProductInfoDTO> getListProduct();
 

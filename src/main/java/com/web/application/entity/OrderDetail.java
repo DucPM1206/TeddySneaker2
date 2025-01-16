@@ -34,23 +34,13 @@ public class OrderDetail {
     @Column(name = "product_price", nullable = false)
     private long productPrice;
 
-    @Column(name = "coupon_code", insertable = false, updatable = false)
-    private String couponCode;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "coupon_code", referencedColumnName = "coupon_code")
-    private Promotion promotion;
-
-    @Column(name = "discount", nullable = false)
-    private long discount = 0;
-
     @Column(name = "subtotal", nullable = false)
     private long subtotal;
 
     @PrePersist
     @PreUpdate
     private void calculateSubtotal() {
-        this.subtotal = (this.productPrice - this.discount) * this.quantity;
+        this.subtotal = this.productPrice * this.quantity;
     }
 
     // Override equals and hashCode using the id field
